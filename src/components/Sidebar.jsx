@@ -3,42 +3,54 @@ import { useKakaoSearch } from '../hooks/useKakaoSearch';
 import { useStore } from '../store/useStore';
 
 export default function Sidebar() {
-  // 👈 이제 Sidebar도 지도의 현재 위치(bounds)를 알 수 있습니다!
-  const { bounds, reviews, setSelectedPlace, setModalOpen } = useStore();
-  
-  // bounds 값을 넣어서 API를 호출합니다 (지도와 완벽하게 동기화됨)
-  const { data: restaurants = [] } = useKakaoSearch(bounds); 
+  const { category, setCategory, reviews, setSelectedPlace, setModalOpen } = useStore();
+  const { data: restaurants = [], isFetching } = useKakaoSearch(); 
+
+  const SkeletonCard = () => (
+    <div className="skeleton-card">
+      <div className="skeleton-line"></div>
+      <div className="skeleton-line short"></div>
+      <div className="skeleton-line short" style={{ width: '30%' }}></div>
+    </div>
+  );
 
   return (
     <div className="sidebar">
-      <h2>현재 화면 맛집 ({restaurants.length})</h2>
-      <div className="list-container">
-        {/* 결과가 없을 때 보여줄 안내 문구 추가 */}
-        {restaurants.length === 0 && (
-          <p style={{textAlign: 'center', marginTop: '30px', color: '#888'}}>
-            주변에 맛집이 없거나<br/>지도를 이동해보세요!
-          </p>
-        )}
-        
-        {restaurants.map((place) => {
-          const placeReviews = reviews[place.id] || [];
-          const avgRating = placeReviews.length
-            ? (placeReviews.reduce((sum, r) => sum + r.rating, 0) / placeReviews.length).toFixed(1)
-            : '평가 없음';
+      <div className="sidebar-header">
+        <div className="category-filters">
+          <button className={category === 'FD6' ? 'active' : ''} onClick={() => setCategory('FD6')}>🍚 식당</button>
+          <button className={category === 'CE7' ? 'active' : ''} onClick={() => setCategory('CE7')}>☕ 카페</button>
+          <button className={category === 'CS2' ? 'active' : ''} onClick={() => setCategory('CS2')}>🏪 편의점</button>
+        </div>
+      </div>
 
-          return (
-            <div key={place.id} className="place-card">
-              <h3>{place.place_name}</h3>
-              <p>{place.road_address_name || place.address_name}</p>
-              <div className="card-footer">
-                <span className="rating">⭐ {avgRating} ({placeReviews.length})</span>
-                <button onClick={() => { setSelectedPlace(place); setModalOpen(true); }}>
-                  리뷰
-                </button>
+      <div className="list-container">
+        {isFetching ? (
+          Array(5).fill(0).map((_, i) => <SkeletonCard key={i} />)
+        ) : restaurants.length === 0 ? (
+          <p className="empty-msg">조건에 맞는 장소가 없습니다.</p>
+        ) : (
+          restaurants.map((place) => {
+            const placeReviews = reviews[place.id] || [];
+            const avgRating = placeReviews.length
+              ? (placeReviews.reduce((sum, r) => sum + r.rating, 0) / placeReviews.length).toFixed(1)
+              : '평가 없음';
+
+            return (
+              <div key={place.id} className="place-card">
+                <h3>{place.place_name}</h3>
+                <p>{place.road_address_name || place.address_name}</p>
+                <div className="card-footer">
+                  <div>
+                    <span className="rating">⭐ {avgRating}</span>
+                    {place.distance && <span className="distance">📍 {place.distance}m</span>}
+                  </div>
+                  <button onClick={() => { setSelectedPlace(place); setModalOpen(true); }}>리뷰</button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

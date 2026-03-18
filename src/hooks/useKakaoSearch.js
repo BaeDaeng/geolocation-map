@@ -1,48 +1,51 @@
-import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useStore } from '../store/useStore';
 
-// 디바운스 훅: 값이 빠르게 변할 때 마지막 변화 이후 delay만큼 지나야 값을 리턴
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-  return debouncedValue;
-}
-
-export const useKakaoSearch = (bounds) => {
-  // 지도가 움직일 때마다 들어오는 bounds 값을 500ms 지연시킴
-  const debouncedBounds = useDebounce(bounds, 500);
+export const useKakaoSearch = () => {
+  // 전역 상태에서 검색에 필요한 모든 값 가져오기
+  const { searchBounds, category, keyword, userLocation } = useStore();
 
   return useQuery({
-    // 캐시 키: 바운더리가 바뀔 때만 새로운 API 요청
-    queryKey: ['restaurants', debouncedBounds],
+    // queryKey 배열의 값이 하나라도 바뀌면 자동으로 API를 재호출합니다.
+    queryKey: ['places', searchBounds, category, keyword],
     queryFn: () => {
       return new Promise((resolve) => {
-        if (!debouncedBounds || !window.kakao || !window.kakao.maps.services) {
+        if (!searchBounds || !window.kakao || !window.kakao.maps.services) {
           return resolve([]);
         }
 
         const ps = new window.kakao.maps.services.Places();
-        
-        // 문자열로 된 bounds를 카카오 객체로 변환
-        const [swLat, swLng, neLat, neLng] = debouncedBounds.split(',');
+        const [swLat, swLng, neLat, neLng] = searchBounds.split(',');
         const kakaoBounds = new window.kakao.maps.LatLngBounds(
           new window.kakao.maps.LatLng(swLat, swLng),
           new window.kakao.maps.LatLng(neLat, neLng)
         );
 
-        // FD6 = 음식점 카테고리
-        ps.categorySearch('FD6', (data, status) => {
+        // API 옵션: 바운더리 지정 및 거리 계산을 위한 내 좌표(x, y) 제공
+        const searchOptions = {
+          bounds: kakaoBounds,
+          useMapBounds: true,
+          x: userLocation.lng, // 경도
+          y: userLocation.lat, // 위도
+        };
+
+        const callback = (data, status) => {
           if (status === window.kakao.maps.services.Status.OK) {
             resolve(data);
           } else {
-            resolve([]); // 결과가 없거나 에러면 빈 배열 리턴
+            resolve([]);
           }
-        }, { bounds: kakaoBounds, useMapBounds: true });
+        };
+
+        // 키워드가 있으면 키워드 검색, 없으면 카테고리 검색 실행
+        if (keyword) {
+          ps.keywordSearch(keyword, callback, searchOptions);
+        } else {
+          ps.categorySearch(category, callback, searchOptions);
+        }
       });
     },
-    enabled: !!debouncedBounds, // 바운더리 값이 있을 때만 요청
+    // searchBounds 값이 설정된 이후에만 쿼리 실행 (초기 하얀 화면 에러 방지)
+    enabled: !!searchBounds, 
   });
 };
