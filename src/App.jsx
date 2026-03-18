@@ -1,11 +1,16 @@
 import React from 'react';
 import KakaoMap from './components/Map/KakaoMap';
-import './App.css'; // 필요에 따라 글로벌 CSS 추가
+import Sidebar from './components/Sidebar';
+import ReviewModal from './components/ReviewModal';
 
 function App() {
   return (
-    <div className="App">
-      <KakaoMap />
+    <div className="app-container">
+      <Sidebar />
+      <div className="map-wrapper">
+        <KakaoMap />
+      </div>
+      <ReviewModal />
     </div>
   );
 }
