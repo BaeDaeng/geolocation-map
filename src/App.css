@@ -1,43 +1,252 @@
-/* 사이드바 & 말풍선 하단 버튼 정렬 */
-.overlay-buttons, .card-buttons {
-  display: flex;
-  gap: 6px;
-  margin-top: 10px;
+/* =========================================
+   1. 전체 뼈대 및 레이아웃
+========================================= */
+html, body, #root {
+  width: 100%; height: 100%; margin: 0; padding: 0;
+  font-family: -apple-system, sans-serif;
 }
 
-/* 공통 버튼 디자인 */
-.review-btn, .nav-btn {
-  flex: 1;
-  padding: 8px 0;
+.app-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 사이드바 UI */
+.sidebar {
+  width: 350px;
+  background: #f8f9fa;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-header {
+  padding: 15px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+.category-filters { display: flex; gap: 8px; }
+.category-filters button {
+  flex: 1; padding: 8px 0; background: #f1f3f5; border: 1px solid #ddd;
+  border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; color: #555;
+}
+.category-filters button.active { background: #ffeb00; border-color: #fbd900; color: #000; }
+
+.list-container {
+  flex: 1; overflow-y: auto; padding: 15px;
+}
+.place-card {
+  background: #fff; padding: 15px; border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px;
+}
+.place-card h3 { margin: 0 0 5px 0; font-size: 16px; color: #333; }
+.place-card p { margin: 0 0 10px 0; font-size: 12px; color: #777; }
+
+/* 사이드바 하단 정보 및 버튼 */
+.card-footer { 
+  display: flex; justify-content: space-between; align-items: center; margin-top: 10px; 
+}
+.distance { font-size: 12px; color: #007bff; margin-left: 10px; font-weight: bold; }
+.empty-msg { text-align: center; color: #888; margin-top: 40px; }
+
+/* 사이드바 안 버튼 컨테이너 */
+.card-buttons {
+  display: flex;
+  gap: 6px;
+}
+.card-buttons .review-btn,
+.card-buttons .nav-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  color: #333;
+}
+.card-buttons .review-btn { background: #ffeb00; border: none; }
+.card-buttons .nav-btn { background: #007bff; color: white; border: none; }
+
+/* 지도 영역 컨테이너 */
+.map-wrapper { flex: 1; position: relative; }
+
+/* =========================================
+   2. 지도 위 오버레이 (말풍선) UI - 완벽 수정판
+========================================= */
+.custom-overlay {
+  position: absolute;
+  width: 180px; /* 말풍선 가로 크기 고정 */
+  background: white; 
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0px 4px 15px rgba(0,0,0,0.15);
+  border: 1px solid #eee;
+  z-index: 100;
+  transform: translateX(-50%); /* 마커 중앙 정렬 트릭 */
+  margin-left: 0; 
+}
+
+.custom-overlay::after {
+  content: '';
+  position: absolute;
+  bottom: -10px; 
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px 10px 0;
+  border-style: solid;
+  border-color: white transparent transparent transparent; 
+}
+
+.overlay-info {
+  text-align: center;
+}
+.overlay-info strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; 
+}
+.overlay-info .category {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 12px;
+}
+
+/* 말풍선 내부 버튼 컨테이너 */
+.overlay-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* 말풍선 전용 버튼 크기 */
+.overlay-buttons .review-btn,
+.overlay-buttons .nav-btn {
+  flex: 1; 
+  padding: 6px 0; 
+  font-size: 12px; 
+  height: auto; 
+  width: auto; 
+  margin: 0;
   text-align: center;
   border-radius: 6px;
   font-weight: bold;
-  font-size: 13px;
   cursor: pointer;
   text-decoration: none;
-  box-sizing: border-box;
-  display: inline-block;
+  display: block;
+}
+.overlay-buttons .review-btn { background: #ffeb00; color: #333; border: none; }
+.overlay-buttons .review-btn:hover { background: #fbd900; }
+.overlay-buttons .nav-btn { background: #007bff; color: white; border: none; }
+.overlay-buttons .nav-btn:hover { background: #0056b3; }
+
+/* =========================================
+   3. 신규 추가된 지도 위 UI (검색창, 현 지도 검색, 마커)
+========================================= */
+/* 상단에 떠 있는 검색창 UI */
+.top-search-bar {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 350px;
+  max-width: 90%;
+}
+.search-form-floating {
+  display: flex;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+.search-form-floating input {
+  flex: 1; padding: 12px 15px; border: none; font-size: 15px; outline: none;
+}
+.search-form-floating button {
+  padding: 0 15px; background: white; border: none; border-left: 1px solid #eee; cursor: pointer; font-size: 18px;
 }
 
-/* 리뷰 버튼 색상 */
-.review-btn {
-  background: #ffeb00;
-  color: #333;
-  border: none;
+/* "현 지도에서 검색" 버튼 */
+.search-here-btn {
+  position: absolute;
+  bottom: 40px; 
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 12px 24px;
+  background: #fff;
+  color: #007bff;
+  border: 1px solid #007bff;
+  border-radius: 30px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s;
 }
-.review-btn:hover { background: #fbd900; }
+.search-here-btn:hover { background: #007bff; color: #fff; transform: translateX(-50%) scale(1.05); }
 
-/* 길찾기 버튼 색상 */
-.nav-btn {
-  background: #007bff;
-  color: white;
-  border: none;
+/* 내 위치 (파란색 깜빡이는 점) */
+.current-location-marker {
+  width: 16px; height: 16px;
+  background-color: #007bff;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  animation: pulse-blue 1.5s infinite;
 }
-.nav-btn:hover { background: #0056b3; }
+@keyframes pulse-blue {
+  0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+  70% { box-shadow: 0 0 0 15px rgba(0, 123, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+}
 
-/* 오버레이 안쪽 기존 버튼 속성 덮어쓰기 방어 */
-.overlay-info button.review-btn, 
-.overlay-info a.nav-btn {
-  width: auto;
-  margin-bottom: 0;
+/* =========================================
+   4. 모달창 및 스켈레톤 UI
+========================================= */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; justify-content: center; align-items: center;
+}
+.modal-content {
+  background: white; width: 400px; max-width: 90%;
+  border-radius: 12px; padding: 25px; display: flex; flex-direction: column;
+}
+.modal-category { color: #888; font-size: 12px; margin-top: -10px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.reviews-list { max-height: 200px; overflow-y: auto; margin: 15px 0; }
+.review-item { background: #f4f4f4; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+.review-item span { font-weight: bold; font-size: 12px; }
+.review-item p { margin: 5px 0 0 0; font-size: 14px; }
+.review-form { display: flex; gap: 10px; margin-bottom: 15px; }
+.review-form input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+.review-form button { padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.close-btn { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; }
+
+/* 로딩 애니메이션 */
+.skeleton-card {
+  background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+.skeleton-line { height: 16px; background: #e9ecef; margin-bottom: 10px; border-radius: 4px; }
+.skeleton-line.short { width: 60%; }
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* 모바일 화면 대응 */
+@media (max-width: 768px) {
+  .app-container { flex-direction: column; }
+  .sidebar { width: 100%; height: 40vh; border-right: none; border-top: 1px solid #ccc; z-index: 10; order: 2; }
+  .map-wrapper { height: 60vh; order: 1; }
 }

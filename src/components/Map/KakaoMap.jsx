@@ -7,7 +7,6 @@ const KakaoMap = () => {
   const mapContainerRef = useRef(null);
   const mapInstance = useRef(null);
   
-  // 클러스터러와 오버레이 추적을 위한 Ref 분리
   const clustererInstance = useRef(null); 
   const overlaysRef = useRef([]); 
   
@@ -43,7 +42,6 @@ const KakaoMap = () => {
     const map = new kakao.maps.Map(container, options);
     mapInstance.current = map;
 
-    // 🚀 마커 클러스터러 생성 (레벨 5 이상 축소 시 뭉침)
     const clusterer = new kakao.maps.MarkerClusterer({
       map: map,
       averageCenter: true,
@@ -51,7 +49,18 @@ const KakaoMap = () => {
     });
     clustererInstance.current = clusterer;
 
-    setTimeout(() => map.relayout(), 100);
+    // ⭐ 핵심 해결 코드: ResizeObserver를 달아서 지도가 잘리는 현상 완벽 방어
+    const resizeObserver = new ResizeObserver(() => {
+      // 1. 현재 보고 있던 중심 좌표를 기억합니다.
+      const currentCenter = map.getCenter();
+      // 2. 바뀐 화면 크기에 맞춰 지도를 꽉 차게 다시 그립니다.
+      map.relayout();
+      // 3. 지도를 다시 그린 후, 아까 기억해둔 중심 좌표로 카메라를 원상복구합니다.
+      map.setCenter(currentCenter);
+    });
+    
+    // 맵 컨테이너의 크기 변화를 계속 감시합니다.
+    resizeObserver.observe(container);
 
     const updateBounds = () => {
       const mapBounds = map.getBounds();
@@ -67,8 +76,12 @@ const KakaoMap = () => {
 
     kakao.maps.event.addListener(map, 'idle', updateBounds);
     updateBounds(); 
+    
+    // 컴포넌트가 꺼질 때 메모리 누수 방지를 위해 감시자를 끕니다.
+    return () => resizeObserver.disconnect();
   }, [location.lat, location.lng, setViewBounds, setSearchBounds]);
 
+  // 2. 내 위치(GPS) 변경 시 지도 부드럽게 이동
   useEffect(() => {
     const { kakao } = window;
     if (mapInstance.current && location.lat) {
@@ -77,6 +90,7 @@ const KakaoMap = () => {
     }
   }, [location]);
 
+  // 3. 내 위치 파란색 마커 띄우기
   useEffect(() => {
     const { kakao } = window;
     if (!mapInstance.current || !location.lat) return;
@@ -93,25 +107,22 @@ const KakaoMap = () => {
     return () => overlay.setMap(null); 
   }, [location]);
 
-  // 3. 맛집 마커, 오버레이 및 클러스터링 렌더링
+  // 4. 맛집 마커, 오버레이 및 클러스터링 렌더링
   useEffect(() => {
     const { kakao } = window;
     if (!mapInstance.current || !clustererInstance.current) return;
 
-    // 기존 오버레이 삭제 및 클러스터러 초기화
     overlaysRef.current.forEach(ov => ov.setMap(null));
     overlaysRef.current = [];
     clustererInstance.current.clear();
 
-    const newMarkers = []; // 클러스터러에 한 번에 넣을 마커 배열
+    const newMarkers = []; 
 
     restaurants.forEach(place => {
       const marker = new kakao.maps.Marker({
         position: new kakao.maps.LatLng(place.y, place.x)
-        // map 속성을 빼서 클러스터러가 관리하게 만듭니다.
       });
 
-      // 📍 카카오맵 외부 링크 (도착지: 식당 이름, 좌표)
       const naviUrl = `https://map.kakao.com/link/to/${place.place_name},${place.y},${place.x}`;
 
       const content = document.createElement('div');
@@ -147,7 +158,6 @@ const KakaoMap = () => {
       overlaysRef.current.push(overlay);
     });
 
-    // 🚀 완성된 마커들을 클러스터러에 한 번에 집어넣습니다
     clustererInstance.current.addMarkers(newMarkers);
 
     kakao.maps.event.addListener(mapInstance.current, 'click', () => {
