@@ -35,6 +35,9 @@ export default function Sidebar() {
             const avgRating = placeReviews.length
               ? (placeReviews.reduce((sum, r) => sum + r.rating, 0) / placeReviews.length).toFixed(1)
               : '평가 없음';
+            
+            // 📍 카카오맵 외부 링크 생성
+            const naviUrl = `https://map.kakao.com/link/to/${place.place_name},${place.y},${place.x}`;
 
             return (
               <div key={place.id} className="place-card">
@@ -45,7 +48,11 @@ export default function Sidebar() {
                     <span className="rating">⭐ {avgRating}</span>
                     {place.distance && <span className="distance">📍 {place.distance}m</span>}
                   </div>
-                  <button onClick={() => { setSelectedPlace(place); setModalOpen(true); }}>리뷰</button>
+                  {/* 길찾기 버튼 추가 */}
+                  <div className="card-buttons">
+                    <button className="review-btn" onClick={() => { setSelectedPlace(place); setModalOpen(true); }}>리뷰</button>
+                    <a href={naviUrl} target="_blank" rel="noreferrer" className="nav-btn">길찾기</a>
+                  </div>
                 </div>
               </div>
             );

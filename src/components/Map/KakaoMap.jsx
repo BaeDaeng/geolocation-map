@@ -6,6 +6,9 @@ import { useStore } from '../../store/useStore';
 const KakaoMap = () => {
   const mapContainerRef = useRef(null);
   const mapInstance = useRef(null);
+  
+  // 클러스터러와 오버레이 추적을 위한 Ref 분리
+  const clustererInstance = useRef(null); 
   const overlaysRef = useRef([]); 
   
   const { location } = useGeolocation();
@@ -21,17 +24,34 @@ const KakaoMap = () => {
     setUserLocation(location);
   }, [location, setUserLocation]);
 
-  // 1. 지도 초기화 및 바운더리 감지
+  // 1. 지도 & 마커 클러스터러 초기화
   useEffect(() => {
     const { kakao } = window;
-    if (!kakao || !kakao.maps || mapContainerRef.current.hasChildNodes()) return;
+    
+    if (!kakao || !kakao.maps || mapInstance.current) return;
+
+    const container = mapContainerRef.current;
+    if (container.hasChildNodes()) {
+      container.innerHTML = ''; 
+    }
 
     const options = {
       center: new kakao.maps.LatLng(location.lat, location.lng),
       level: 4,
     };
-    const map = new kakao.maps.Map(mapContainerRef.current, options);
+    
+    const map = new kakao.maps.Map(container, options);
     mapInstance.current = map;
+
+    // 🚀 마커 클러스터러 생성 (레벨 5 이상 축소 시 뭉침)
+    const clusterer = new kakao.maps.MarkerClusterer({
+      map: map,
+      averageCenter: true,
+      minLevel: 5, 
+    });
+    clustererInstance.current = clusterer;
+
+    setTimeout(() => map.relayout(), 100);
 
     const updateBounds = () => {
       const mapBounds = map.getBounds();
@@ -47,9 +67,16 @@ const KakaoMap = () => {
 
     kakao.maps.event.addListener(map, 'idle', updateBounds);
     updateBounds(); 
-  }, [location, setViewBounds, setSearchBounds]);
+  }, [location.lat, location.lng, setViewBounds, setSearchBounds]);
 
-  // 2. ⭐ 내 위치 파란색 마커 띄우기 (신규 추가) ⭐
+  useEffect(() => {
+    const { kakao } = window;
+    if (mapInstance.current && location.lat) {
+      const moveLatLon = new kakao.maps.LatLng(location.lat, location.lng);
+      mapInstance.current.panTo(moveLatLon); 
+    }
+  }, [location]);
+
   useEffect(() => {
     const { kakao } = window;
     if (!mapInstance.current || !location.lat) return;
@@ -63,22 +90,29 @@ const KakaoMap = () => {
       map: mapInstance.current
     });
 
-    return () => overlay.setMap(null); // 클린업
+    return () => overlay.setMap(null); 
   }, [location]);
 
-  // 3. 맛집 마커 및 오버레이 렌더링
+  // 3. 맛집 마커, 오버레이 및 클러스터링 렌더링
   useEffect(() => {
     const { kakao } = window;
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !clustererInstance.current) return;
 
+    // 기존 오버레이 삭제 및 클러스터러 초기화
     overlaysRef.current.forEach(ov => ov.setMap(null));
     overlaysRef.current = [];
+    clustererInstance.current.clear();
+
+    const newMarkers = []; // 클러스터러에 한 번에 넣을 마커 배열
 
     restaurants.forEach(place => {
       const marker = new kakao.maps.Marker({
-        position: new kakao.maps.LatLng(place.y, place.x),
-        map: mapInstance.current
+        position: new kakao.maps.LatLng(place.y, place.x)
+        // map 속성을 빼서 클러스터러가 관리하게 만듭니다.
       });
+
+      // 📍 카카오맵 외부 링크 (도착지: 식당 이름, 좌표)
+      const naviUrl = `https://map.kakao.com/link/to/${place.place_name},${place.y},${place.x}`;
 
       const content = document.createElement('div');
       content.className = 'custom-overlay';
@@ -86,7 +120,10 @@ const KakaoMap = () => {
         <div class="overlay-info">
           <strong>${place.place_name}</strong>
           <span class="category">${place.category_name.split('>').pop()}</span>
-          <button class="review-btn">리뷰 보기</button>
+          <div class="overlay-buttons">
+            <button class="review-btn">리뷰</button>
+            <a href="${naviUrl}" target="_blank" rel="noreferrer" class="nav-btn">길찾기</a>
+          </div>
         </div>
       `;
 
@@ -96,18 +133,33 @@ const KakaoMap = () => {
       });
 
       const overlay = new kakao.maps.CustomOverlay({
-        position: marker.getPosition(), content: content, yAnchor: 1.5 
+        position: marker.getPosition(), 
+        content: content, 
+        yAnchor: 1.5 
       });
 
       kakao.maps.event.addListener(marker, 'click', () => {
         overlaysRef.current.forEach(ov => ov.setMap(null));
         overlay.setMap(mapInstance.current);
       });
-      kakao.maps.event.addListener(mapInstance.current, 'click', () => overlay.setMap(null));
+      
+      newMarkers.push(marker);
       overlaysRef.current.push(overlay);
     });
 
-    return () => overlaysRef.current.forEach(ov => ov.setMap(null));
+    // 🚀 완성된 마커들을 클러스터러에 한 번에 집어넣습니다
+    clustererInstance.current.addMarkers(newMarkers);
+
+    kakao.maps.event.addListener(mapInstance.current, 'click', () => {
+      overlaysRef.current.forEach(ov => ov.setMap(null));
+    });
+
+    return () => {
+      overlaysRef.current.forEach(ov => ov.setMap(null));
+      if (clustererInstance.current) {
+        clustererInstance.current.clear();
+      }
+    };
   }, [restaurants, setModalOpen, setSelectedPlace]);
 
   const showSearchButton = viewBounds && searchBounds && viewBounds !== searchBounds;
@@ -122,7 +174,7 @@ const KakaoMap = () => {
           ↻ 현 지도에서 검색
         </button>
       )}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
     </div>
   );
 };

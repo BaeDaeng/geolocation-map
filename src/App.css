@@ -1,59 +1,43 @@
-/* 상단에 떠 있는 검색창 UI */
-.top-search-bar {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  width: 350px;
-  max-width: 90%;
-}
-.search-form-floating {
+/* 사이드바 & 말풍선 하단 버튼 정렬 */
+.overlay-buttons, .card-buttons {
   display: flex;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  overflow: hidden;
-  border: 1px solid #ddd;
-}
-.search-form-floating input {
-  flex: 1; padding: 12px 15px; border: none; font-size: 15px; outline: none;
-}
-.search-form-floating button {
-  padding: 0 15px; background: white; border: none; border-left: 1px solid #eee; cursor: pointer; font-size: 18px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
-/* "현 지도에서 검색" 버튼 위치를 아래쪽으로 이동시킴 */
-.search-here-btn {
-  position: absolute;
-  bottom: 40px; /* top에서 bottom으로 변경 */
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 12px 24px;
-  background: #fff;
-  color: #007bff;
-  border: 1px solid #007bff;
-  border-radius: 30px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  cursor: pointer;
+/* 공통 버튼 디자인 */
+.review-btn, .nav-btn {
+  flex: 1;
+  padding: 8px 0;
+  text-align: center;
+  border-radius: 6px;
   font-weight: bold;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  display: inline-block;
 }
-.search-here-btn:hover { background: #007bff; color: #fff; transform: translateX(-50%) scale(1.05); }
 
-/* 내 위치 (파란색 깜빡이는 점) 애니메이션 */
-.current-location-marker {
-  width: 16px; height: 16px;
-  background-color: #007bff;
-  border: 3px solid white;
-  border-radius: 50%;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-  animation: pulse-blue 1.5s infinite;
+/* 리뷰 버튼 색상 */
+.review-btn {
+  background: #ffeb00;
+  color: #333;
+  border: none;
 }
-@keyframes pulse-blue {
-  0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
-  70% { box-shadow: 0 0 0 15px rgba(0, 123, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
+.review-btn:hover { background: #fbd900; }
+
+/* 길찾기 버튼 색상 */
+.nav-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+}
+.nav-btn:hover { background: #0056b3; }
+
+/* 오버레이 안쪽 기존 버튼 속성 덮어쓰기 방어 */
+.overlay-info button.review-btn, 
+.overlay-info a.nav-btn {
+  width: auto;
+  margin-bottom: 0;
 }
