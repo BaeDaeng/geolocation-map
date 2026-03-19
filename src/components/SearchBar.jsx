@@ -17,7 +17,7 @@ export default function SearchBar() {
       <form onSubmit={handleSubmit} className="search-form-floating">
         <input
           type="text"
-          placeholder="장소, 식당, 카페 검색"
+          placeholder="장소, 식당, 카페 검색색"
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
